@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepFLD - Fatty Liver Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .progress-bar {
+            transition: width 1s ease-in-out;
+        }
+        .questionnaire-section {
+            background-color: #f8fafc;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .input-card {
+            transition: all 0.3s ease;
+        }
+        .input-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="min-h-screen">
+        <!-- Selection Screen -->
+        <div v-if="currentView === 'selection'" class="min-h-screen bg-gray-50 p-4 fade-in">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center mb-12">
+                    <h1 class="text-4xl font-bold text-gray-800 mb-2">DeepFLD</h1>
+                    <p class="text-gray-600 text-lg">Fatty Liver Detection and Grading with AI</p>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                    <!-- Ultrasound Card -->
+                    <div class="input-card bg-white rounded-lg shadow-lg p-8 text-center cursor-pointer border-2 border-transparent hover:border-blue-200"
+                         @click="selectInputType('ultrasound')">
+                        <div class="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                            <i class="fas fa-upload text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">Ultrasound Analysis</h3>
+                        <p class="text-gray-600 mb-4">Upload liver ultrasound image for AI-powered fatty liver detection and grading</p>
+                        <button class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            Choose This Option
+                        </button>
+                    </div>
+
+                    <!-- Blood Test Card -->
+                    <div class="input-card bg-white rounded-lg shadow-lg p-8 text-center cursor-pointer border-2 border-transparent hover:border-green-200"
+                         @click="selectInputType('bloodtest')">
+                        <div class="bg-green-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                            <i class="fas fa-flask text-green-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">Blood Test Analysis</h3>
+                        <p class="text-gray-600 mb-4">Enter blood test values for liver function assessment and fatty liver risk evaluation</p>
+                        <button class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            Choose This Option
+                        </button>
+                    </div>
+
+                    <!-- Questionnaire Card -->
+                    <div class="input-card bg-white rounded-lg shadow-lg p-8 text-center cursor-pointer border-2 border-transparent hover:border-purple-200"
+                         @click="selectInputType('questionnaire')">
+                        <div class="bg-purple-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                            <i class="fas fa-clipboard-list text-purple-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">Fatty Liver Questionnaire</h3>
+                        <p class="text-gray-600 mb-4">Complete a questionnaire for a preliminary fatty liver risk screening</p>
+                        <button class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                            Choose This Option
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-center mt-12 text-sm text-gray-500">
+                    Made with AI Technology
+                </div>
+            </div>
+        </div>
+
+        <!-- Processing Screen -->
+        <div v-if="currentView === 'processing'" class="min-h-screen bg-gray-50 flex items-center justify-center fade-in">
+            <div class="text-center bg-white p-8 rounded-lg shadow-lg">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Analyzing with AI...</h3>
+                <p class="text-gray-600">
+                    {{ processingMessage }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Ultrasound Input Screen -->
+        <div v-if="currentView === 'ultrasound'" class="min-h-screen bg-gray-50 p-4 fade-in">
+            <div class="max-w-2xl mx-auto">
+                <div class="flex items-center mb-8">
+                    <button @click="backToSelection" class="flex items-center text-gray-600 hover:text-gray-800 mr-4">
+                        <i class="fas fa-arrow-left mr-2"></i> Back
+                    </button>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">Ultrasound Analysis</h1>
+                        <p class="text-gray-600">Upload your liver ultrasound image</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <div class="flex items-center mb-6">
+                        <i class="fas fa-upload text-gray-600 mr-2"></i>
+                        <h2 class="text-xl font-semibold text-gray-800">Upload Ultrasound Image</h2>
+                    </div>
+                    
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+                        <div v-if="!uploadedImage">
+                            <i class="fas fa-cloud-upload-alt text-gray-400 text-4xl mb-4"></i>
+                            <p class="text-lg text-gray-600 mb-2">Drop your ultrasound image here</p>
+                            <p class="text-sm text-gray-500 mb-4">or click to browse files</p>
+                            <input type="file" accept="image/*" @change="handleImageUpload" 
+                                   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                        </div>
+                        <div v-else>
+                            <img :src="uploadedImage" alt="Uploaded ultrasound scan" class="max-h-60 mx-auto mb-4 rounded-lg" />
+                            <button @click="handleImageUpload" class="text-blue-600 text-sm">Choose different image</button>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-8">
+                        <button @click="analyzeUltrasound" :disabled="!uploadedImage"
+                                class="px-8 py-3 rounded-lg text-lg font-semibold transition-colors shadow-lg"
+                                :class="uploadedImage ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'">
+                            Analyze with AI
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blood Test Input Screen -->
+        <div v-if="currentView === 'bloodtest'" class="min-h-screen bg-gray-50 p-4 fade-in">
+            <div class="max-w-2xl mx-auto">
+                <div class="flex items-center mb-8">
+                    <button @click="backToSelection" class="flex items-center text-gray-600 hover:text-gray-800 mr-4">
+                        <i class="fas fa-arrow-left mr-2"></i> Back
+                    </button>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">Blood Test Analysis</h1>
+                        <p class="text-gray-600">Enter your blood test values</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <div class="flex items-center mb-6">
+                        <i class="fas fa-flask text-gray-600 mr-2"></i>
+                        <h2 class="text-xl font-semibold text-gray-800">Blood Test Values</h2>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">ALT (U/L)</label>
+                            <input type="number" placeholder="Enter ALT value" v-model="bloodTestData.ALT" class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">AST (U/L)</label>
+                            <input type="number" placeholder="Enter AST value" v-model="bloodTestData.AST" class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Triglycerides (mg/dL)</label>
+                            <input type="number" placeholder="Enter value" v-model="bloodTestData.TG" class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">GGT (U/L)</label>
+                            <input type="number" placeholder="Enter GGT value" v-model="bloodTestData.GGT" class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">HDL (mg/dL)</label>
+                            <input type="number" placeholder="Enter HDL value" v-model="bloodTestData.HDL" class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">HbA1c (%)</label>
+                            <input type="number" placeholder="Enter value" v-model="bloodTestData.HbA1c" step="0.1" class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                    </div>
+
+                    <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                        <p class="text-sm text-blue-700">
+                            Note: You don't need to fill all fields. Enter the values you have available from your blood test report.
+                        </p>
+                    </div>
+
+                    <div class="text-center mt-8">
+                        <button @click="analyzeBloodTest" 
+                                class="px-8 py-3 bg-green-600 text-white rounded-lg text-lg font-semibold hover:bg-green-700 shadow-lg">
+                            Analyze with AI
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Questionnaire Screen -->
+        <div v-if="currentView === 'questionnaire'" class="min-h-screen bg-gray-50 p-4 fade-in">
+            <div class="max-w-2xl mx-auto">
+                <div class="flex items-center mb-8">
+                    <button @click="backToSelection" class="flex items-center text-gray-600 hover:text-gray-800 mr-4">
+                        <i class="fas fa-arrow-left mr-2"></i> Back
+                    </button>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">Fatty Liver Questionnaire</h1>
+                        <p class="text-gray-600">Please fill out the questionnaire below</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <!-- Section 1: Personal Info -->
+                    <div class="questionnaire-section">
+                        <h3 class="font-semibold mb-4 flex items-center">
+                            <i class="fas fa-user mr-2"></i> Personal Information
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">Age</label>
+                                <input type="number" v-model="questionnaire.age" class="w-full px-3 py-2 border rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">Sex</label>
+                                <select v-model="questionnaire.sex" class="w-full px-3 py-2 border rounded">
+                                    <option value="">Select</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-1">Height (cm)</label>
+                                    <input type="number" v-model="questionnaire.height" @input="calculateBMI" class="w-full px-3 py-2 border rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-1">Weight (kg)</label>
+                                    <input type="number" v-model="questionnaire.weight" @input="calculateBMI" class="w-full px-3 py-2 border rounded">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">BMI</label>
+                                <input type="text" v-model="bmi" disabled class="w-full px-3 py-2 border rounded bg-gray-100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Medical History -->
+                    <div class="questionnaire-section">
+                        <h3 class="font-semibold mb-4 flex items-center">
+                            <i class="fas fa-medkit mr-2"></i> Medical History
+                        </h3>
+                        <div class="space-y-3">
+                            <p class="text-sm text-gray-700 mb-2">Check all that apply:</p>
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="questionnaire.conditions" value="Diabetes" class="mr-2">
+                                Diabetes
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="questionnaire.conditions" value="Hypertension" class="mr-2">
+                                High Blood Pressure
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="questionnaire.conditions" value="High Cholesterol" class="mr-2">
+                                High Cholesterol
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="questionnaire.conditions" value="Thyroid Disorder" class="mr-2">
+                                Thyroid Disorder
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="questionnaire.conditions" value="Liver Disease" class="mr-2">
+                                Liver Disease
+                            </label>
+                            <div class="mt-3">
+                                <label class="block text-sm text-gray-700 mb-1">Other Conditions (if any)</label>
+                                <input type="text" v-model="questionnaire.otherConditions" class="w-full px-3 py-2 border rounded">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Lifestyle -->
+                    <div class="questionnaire-section">
+                        <h3 class="font-semibold mb-4 flex items-center">
+                            <i class="fas fa-heartbeat mr-2"></i> Lifestyle Factors
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">Alcohol Consumption</label>
+                                <select v-model="questionnaire.alcohol" class="w-full px-3 py-2 border rounded">
+                                    <option value="">Select</option>
+                                    <option value="Never">Never</option>
+                                    <option value="Occasionally">Occasionally (1-2 drinks/month)</option>
+                                    <option value="Weekly">Weekly (1-6 drinks/week)</option>
+                                    <option value="Daily">Daily (1+ drinks/day)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">Smoking</label>
+                                <select v-model="questionnaire.smoking" class="w-full px-3 py-2 border rounded">
+                                    <option value="">Select</option>
+                                    <option value="Never">Never smoked</option>
+                                    <option value="Former">Former smoker</option>
+                                    <option value="Current">Current smoker</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">Exercise Frequency</label>
+                                <select v-model="questionnaire.exercise" class="w-full px-3 py-2 border rounded">
+                                    <option value="">Select</option>
+                                    <option value="None">None</option>
+                                    <option value="Weekly">1-2 times/week</option>
+                                    <option value="Regular">3+ times/week</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 4: Symptoms -->
+                    <div class="questionnaire-section">
+                        <h3 class="font-semibold mb-4 flex items-center">
+                            <i class="fas fa-notes-medical mr-2"></i> Symptoms
+                        </h3>
+                        <div class="space-y-3">
+                            <p class="text-sm text-gray-700 mb-2">Check all that apply:</p>
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="questionnaire.symptoms" value="Fatigue" class="mr-2">
+                                Fatigue/Tiredness
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="questionnaire.symptoms" value="Abdominal Pain" class="mr-2">
+                                Right Upper Abdominal Pain
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="questionnaire.symptoms" value="Bloating" class="mr-2">
+                                Bloating/Indigestion
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="questionnaire.symptoms" value="Appetite Loss" class="mr-2">
+                                Loss of Appetite
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" v-model="questionnaire.symptoms" value="Jaundice" class="mr-2">
+                                Yellowing of Eyes/Skin
+                            </label>
+                            <div class="mt-3">
+                                <label class="flex items-center">
+                                    <input type="checkbox" v-model="questionnaire.noSymptoms" class="mr-2">
+                                    No Symptoms
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Consent -->
+                    <div class="mt-6 mb-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" v-model="questionnaire.consent" class="mr-2">
+                            <span class="text-sm text-gray-700">I consent to my data being used for AI analysis and risk assessment</span>
+                        </label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button @click="analyzeQuestionnaire" :disabled="!questionnaire.consent"
+                            class="w-full py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400">
+                        Analyze Questionnaire
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div v-if="currentView === 'results'" class="min-h-screen bg-gray-50 p-4 fade-in">
+            <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="bg-blue-600 text-white p-4 flex items-center">
+                    <i class="fas fa-chart-line text-xl mr-2"></i>
+                    <h2 class="text-xl font-bold">Fatty Liver Analysis Results</h2>
+                </div>
+
+                <div class="p-4 border-b">
+                    <p class="text-sm text-gray-600">Analysis Date: {{ new Date().toLocaleDateString() }}</p>
+                    <p class="text-sm text-gray-500">
+                        Input Type: {{ selectedInputType === 'ultrasound' ? 'Ultrasound Image' : 
+                                      selectedInputType === 'bloodtest' ? 'Blood Test' : 'Questionnaire' }}
+                    </p>
+                </div>
+
+                <!-- Input Preview -->
+                <div v-if="selectedInputType === 'ultrasound' && uploadedImage" class="p-4 border-b">
+                    <div class="bg-gray-100 rounded-lg p-2 h-40 flex items-center justify-center">
+                        <img :src="uploadedImage" alt="Uploaded ultrasound scan" class="max-h-full max-w-full object-contain">
+                    </div>
+                </div>
+
+                <div v-if="selectedInputType === 'bloodtest'" class="p-4 border-b">
+                    <h4 class="text-sm font-semibold text-gray-800 mb-2">Blood Test Values Used:</h4>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div v-for="(value, key) in bloodTestData" v-if="value" class="flex justify-between">
+                            <span class="text-gray-600">{{ key }}:</span>
+                            <span class="text-gray-800">{{ value }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="selectedInputType === 'questionnaire'" class="p-4 border-b">
+                    <h4 class="text-sm font-semibold text-gray-800 mb-2">Questionnaire Summary:</h4>
+                    <div class="space-y-1 text-sm">
+                        <p v-if="questionnaire.age"><span class="font-medium">Age:</span> {{ questionnaire.age }}</p>
+                        <p v-if="questionnaire.sex"><span class="font-medium">Sex:</span> {{ questionnaire.sex }}</p>
+                        <p v-if="bmi"><span class="font-medium">BMI:</span> {{ bmi }}</p>
+                        <p v-if="questionnaire.conditions && questionnaire.conditions.length">
+                            <span class="font-medium">Conditions:</span> {{ questionnaire.conditions.join(', ') }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="p-4">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-1">AI Analysis Result</h3>
+                        <p class="text-blue-600 text-sm">Grade 2 (Moderate Fatty Liver)</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-1">Fatty Liver: Present</p>
+                        <p class="text-sm text-gray-600 mb-1">Severity: Moderate</p>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="text-sm font-semibold text-gray-800 mb-3">Probability Distribution</h4>
+                        
+                        <div class="space-y-2">
+                            <!-- Grade 0 -->
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Grade 0 (Normal)</span>
+                                <span class="text-sm text-gray-600">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-gray-300 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                            </div>
+
+                            <!-- Grade 1 -->
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Grade 1 (Mild)</span>
+                                <span class="text-sm text-gray-600">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-yellow-400 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                            </div>
+
+                            <!-- Grade 2 -->
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-semibold text-red-600">Grade 2 (Moderate)</span>
+                                <span class="text-sm font-semibold text-red-600">100%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-red-500 h-2 rounded-full progress-bar" style="width: 100%"></div>
+                            </div>
+
+                            <!-- Grade 3 -->
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Grade 3 (Severe)</span>
+                                <span class="text-sm text-gray-600">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-red-700 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4 mb-4">
+                        <h4 class="text-sm font-semibold text-gray-800 mb-2">AI Recommendations:</h4>
+                        <ul class="text-sm text-gray-600 space-y-1">
+                            <li>• Lifestyle modifications and weight management</li>
+                            <li>• Follow-up ultrasound in 6 months</li>
+                            <li>• Consider liver function tests if symptoms persist</li>
+                            <li>• Reduce alcohol consumption if applicable</li>
+                            <li>• Consult a hepatologist for further evaluation</li>
+                        </ul>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="space-y-2">
+                        <button @click="downloadReport" 
+                                class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">
+                            <i class="fas fa-download mr-2"></i> Download Full Report
+                        </button>
+                        <button @click="backToSelection" 
+                                class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                            Perform New Analysis
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.min.js"></script>
+    <script>
+        Vue.createApp({
+            data() {
+                return {
+                    currentView: 'selection',
+                    selectedInputType: null,
+                    processingMessage: '',
+                    uploadedImage: null,
+                    bloodTestData: {
+                        ALT: '',
+                        AST: '',
+                        TG: '',
+                        GGT: '',
+                        HDL: '',
+                        HbA1c: ''
+                    },
+                    questionnaire: {
+                        age: '',
+                        sex: '',
+                        height: '',
+                        weight: '',
+                        conditions: [],
+                        otherConditions: '',
+                        alcohol: '',
+                        smoking: '',
+                        exercise: '',
+                        symptoms: [],
+                        noSymptoms: false,
+                        consent: false
+                    },
+                    bmi: ''
+                };
+            },
+            methods: {
+                selectInputType(type) {
+                    this.selectedInputType = type;
+                    if (type === 'ultrasound') {
+                        this.currentView = 'ultrasound';
+                    } else if (type === 'bloodtest') {
+                        this.currentView = 'bloodtest';
+                    } else if (type === 'questionnaire') {
+                        this.currentView = 'questionnaire';
+                    }
+                },
+                handleImageUpload(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.uploadedImage = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                },
+                analyzeUltrasound() {
+                    if (!this.uploadedImage) {
+                        alert('Please upload an ultrasound image first');
+                        return;
+                    }
+                    
+                    this.processingMessage = 'Processing your ultrasound image...';
+                    this.currentView = 'processing';
+                    
+                    setTimeout(() => {
+                        this.currentView = 'results';
+                    }, 4000);
+                },
+                analyzeBloodTest() {
+                    const hasValues = Object.values(this.bloodTestData).some(val => val !== '');
+                    if (!hasValues) {
+                        alert('Please enter at least one blood test value');
+                        return;
+                    }
+                    
+                    this.processingMessage = 'Processing your blood test results...';
+                    this.currentView = 'processing';
+                    
+                    setTimeout(() => {
+                        this.currentView = 'results';
+                    }, 4000);
+                },
+                analyzeQuestionnaire() {
+                    if (!this.questionnaire.consent) {
+                        alert('Please consent to data usage before analysis');
+                        return;
+                    }
+                    
+                    this.processingMessage = 'Processing your questionnaire responses...';
+                    this.currentView = 'processing';
+                    
+                    setTimeout(() => {
+                        this.currentView = 'results';
+                    }, 4000);
+                },
+                backToSelection() {
+                    this.currentView = 'selection';
+                    this.selectedInputType = null;
+                    this.uploadedImage = null;
+                    this.bloodTestData = {
+                        ALT: '',
+                        AST: '',
+                        TG: '',
+                        GGT: '',
+                        HDL: '',
+                        HbA1c: ''
+                    };
+                    this.questionnaire = {
+                        age: '',
+                        sex: '',
+                        height: '',
+                        weight: '',
+                        conditions: [],
+                        otherConditions: '',
+                        alcohol: '',
+                        smoking: '',
+                        exercise: '',
+                        symptoms: [],
+                        noSymptoms: false,
+                        consent: false
+                    };
+                },
+                downloadReport() {
+                    alert('Report download functionality would be implemented here');
+                    // In a real app, this would generate and download a PDF report
+                },
+                calculateBMI() {
+                    if (this.questionnaire.height && this.questionnaire.weight) {
+                        const heightInMeters = this.questionnaire.height / 100;
+                        this.bmi = (this.questionnaire.weight / (heightInMeters * heightInMeters)).toFixed(2);
+                    } else {
+                        this.bmi = '';
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
